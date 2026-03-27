@@ -3,6 +3,7 @@ const { Telegraf } = require('telegraf')
 const cron = require('node-cron')
 const { checkNewTokens } = require('./alerts/tokens')
 const { checkNewBounties } = require('./alerts/bounties')
+const { checkDexScreener } = require('./alerts/dexscreener')
 
 const BOT_TOKEN = process.env.BOT_TOKEN
 const CHAT_ID = process.env.CHAT_ID
@@ -35,9 +36,11 @@ sendAlert('🚨 Alert Bot is online and watching for opportunities!')
 
 checkNewTokens(sendAlert)
 checkNewBounties(sendAlert)
+checkDexScreener(sendAlert)
 
 cron.schedule('*/10 * * * *', () => {
   console.log('Running scheduled check...')
   checkNewTokens(sendAlert)
   checkNewBounties(sendAlert)
+  checkDexScreener(sendAlert)
 })
