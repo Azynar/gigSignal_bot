@@ -1,7 +1,12 @@
 const axios = require('axios')
+const { createChecker } = require('./createChecker')
 
-const seenTokens = new Set()
-let isFirstRun = true
+async function fetchTokens() {
+  const response = await axios.get(
+    'https://api.coingecko.com/api/v3/coins/list'
+  )
+  return response.data
+}
 
 async function getTokenDetails(tokenId) {
   try {
@@ -15,38 +20,27 @@ async function getTokenDetails(tokenId) {
   }
 }
 
-function formatAlert(details) {
-  const name = details.name
-  const symbol = details.symbol.toUpperCase()
-
-  const marketCap = details.market_data?.market_cap?.usd
-    ? `$${Number(details.market_data.market_cap.usd).toLocaleString()}`
+function formatTokenAlert(token) {
+  // same formatAlert function as before
+  const name = token.name
+  const symbol = token.symbol.toUpperCase()
+  const marketCap = token.market_data?.market_cap?.usd
+    ? `$${Number(token.market_data.market_cap.usd).toLocaleString()}`
     : 'Not available'
-
-  const volume = details.market_data?.total_volume?.usd
-    ? `$${Number(details.market_data.total_volume.usd).toLocaleString()}`
+  const volume = token.market_data?.total_volume?.usd
+    ? `$${Number(token.market_data.total_volume.usd).toLocaleString()}`
     : 'Not available'
-
-  const price = details.market_data?.current_price?.usd
-    ? `$${details.market_data.current_price.usd}`
+  const price = token.market_data?.current_price?.usd
+    ? `$${token.market_data.current_price.usd}`
     : 'Not available'
-
-  const genesisDate = details.genesis_date
-    ? details.genesis_date
-    : 'Unknown'
-
-  const website = details.links?.homepage?.[0]
-    ? details.links.homepage[0]
+  const genesisDate = token.genesis_date || 'Unknown'
+  const website = token.links?.homepage?.[0] || null
+  const twitter = token.links?.twitter_screen_name
+    ? `https://twitter.com/${token.links.twitter_screen_name}`
     : null
-
-  const twitter = details.links?.twitter_screen_name
-    ? `https://twitter.com/${details.links.twitter_screen_name}`
+  const telegram = token.links?.telegram_channel_identifier
+    ? `https://t.me/${token.links.telegram_channel_identifier}`
     : null
-
-  const telegram = details.links?.telegram_channel_identifier
-    ? `https://t.me/${details.links.telegram_channel_identifier}`
-    : null
-
   const detectedAt = new Date().toLocaleString()
 
   let message = `🚀 <b>New Token Detected!</b>\n\n`
@@ -57,52 +51,19 @@ function formatAlert(details) {
   message += `📅 <b>Launch Date:</b> ${genesisDate}\n`
   message += `🕐 <b>Detected At:</b> ${detectedAt}\n\n`
   message += `🔗 <b>Links:</b>\n`
-
   if (website) message += `🌐 <a href="${website}">Website</a>\n`
   if (twitter) message += `🐦 <a href="${twitter}">Twitter/X</a>\n`
   if (telegram) message += `✈️ <a href="${telegram}">Telegram</a>\n`
-
-  if (!website && !twitter && !telegram) {
-    message += `No social links available yet\n`
-  }
+  if (!website && !twitter && !telegram) message += `No social links available yet\n`
 
   return message
 }
 
-async function checkNewTokens(sendAlert) {
-  try {
-    const response = await axios.get(
-      'https://api.coingecko.com/api/v3/coins/list'
-    )
-
-    const tokens = response.data
-    let newTokensFound = 0
-
-    for (const token of tokens) {
-      if (!seenTokens.has(token.id)) {
-        seenTokens.add(token.id)
-
-        if (!isFirstRun) {
-          const details = await getTokenDetails(token.id)
-          if (details) {
-            const message = formatAlert(details)
-            await sendAlert(message)
-            newTokensFound++
-          }
-        }
-      }
-    }
-
-    if (isFirstRun) {
-      console.log(`Tokens: First run complete. ${seenTokens.size} tokens saved as baseline.`)
-      isFirstRun = false
-    } else {
-      console.log(`Tokens: Check complete. ${newTokensFound} new token(s) found.`)
-    }
-
-  } catch (error) {
-    console.log('Error checking tokens:', error.message)
-  }
-}
+const checkNewTokens = createChecker({
+  name: 'Tokens',
+  fetchData: fetchTokens,
+  getId: (token) => token.id,
+  formatAlert: formatTokenAlert,
+})
 
 module.exports = { checkNewTokens }
