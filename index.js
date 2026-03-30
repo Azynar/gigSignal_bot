@@ -1,6 +1,7 @@
 require('dotenv').config()
 const { Telegraf } = require('telegraf')
 const cron = require('node-cron')
+const { initTelegramClient, checkTelegramJobs } = require('./alerts/telegramJobs')
 const { checkNewTokens } = require('./alerts/tokens')
 const { checkNewBounties } = require('./alerts/bounties')
 const { checkDexScreener } = require('./alerts/dexscreener')
@@ -24,26 +25,34 @@ bot.start((ctx) => {
   ctx.reply('Hey! Your Alert Bot is alive 🚀')
 })
 
-bot.launch().catch((err) => {
-  console.log('Bot launch error:', err.message)
-})
+async function main() {
+  await initTelegramClient()
 
-process.once('SIGINT', () => bot.stop('SIGINT'))
-process.once('SIGTERM', () => bot.stop('SIGTERM'))
+  bot.launch().catch((err) => {
+    console.log('Bot launch error:', err.message)
+  })
 
-console.log('Bot is running...')
+  process.once('SIGINT', () => bot.stop('SIGINT'))
+  process.once('SIGTERM', () => bot.stop('SIGTERM'))
 
-sendAlert('🚨 Alert Bot is online and watching for opportunities!')
+  console.log('Bot is running...')
 
-checkNewTokens(sendAlert)
-checkNewBounties(sendAlert)
-checkDexScreener(sendAlert)
-checkNewProtocols(sendAlert)
+  sendAlert('🚨 Alert Bot is online and watching for opportunities!')
 
-cron.schedule('*/10 * * * *', () => {
-  console.log('Running scheduled check...')
   checkNewTokens(sendAlert)
   checkNewBounties(sendAlert)
   checkDexScreener(sendAlert)
   checkNewProtocols(sendAlert)
-})
+  checkTelegramJobs(sendAlert)
+
+  cron.schedule('*/10 * * * *', () => {
+    console.log('Running scheduled check...')
+    checkNewTokens(sendAlert)
+    checkNewBounties(sendAlert)
+    checkDexScreener(sendAlert)
+    checkNewProtocols(sendAlert)
+    checkTelegramJobs(sendAlert)
+  })
+}
+
+main()
