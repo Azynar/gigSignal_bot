@@ -63,6 +63,7 @@ const checkNewTokens = createChecker({
   name: 'Tokens',
   fetchData: fetchTokens,
   getId: (token) => token.id,
+  enrichItem: (token) => getTokenDetails(token.id), // ← new line
   formatAlert: formatTokenAlert,
 })
 

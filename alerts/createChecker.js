@@ -4,6 +4,7 @@ function createChecker(options) {
     fetchData,
     getId,
     formatAlert,
+    enrichItem, // ← new optional option
   } = options
 
   const seenItems = new Set()
@@ -21,7 +22,9 @@ function createChecker(options) {
           seenItems.add(id)
 
           if (!isFirstRun) {
-            const message = formatAlert(item)
+            const enrichedItem = enrichItem ? await enrichItem(item) : item // ← new line
+            if (!enrichedItem) continue // ← skip if enrichment failed
+            const message = formatAlert(enrichedItem) // ← now uses enriched data
             await sendAlert(message)
             newItemsFound++
           }
